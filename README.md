@@ -8,6 +8,11 @@ work across three networked worker processes, stores results in a
 content-addressed cache, bundles a playable artifact, and loads that exact
 artifact into a browser game.
 
+![ForgeGrid showing three networked workers, a measured 59 percent speedup, and the live build timeline](docs/assets/forgegrid-hero.png)
+
+*A real run on this computer: three worker processes completed the build 59%
+faster than one worker, with the exact build events recorded beside it.*
+
 ## Watch the demo
 
 https://github.com/user-attachments/assets/c8b4dd5b-3791-40d0-b8d3-fa762ce87cbc
