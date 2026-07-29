@@ -183,7 +183,10 @@ function updateBenchmarkSelection() {
     workerCount === 1
       ? "1 worker baseline"
       : `1 worker vs ${workerCount} workers`;
-  if (state.workerBenchmark?.workerCount === workerCount) return;
+  if (state.workerBenchmark?.workerCount === workerCount) {
+    renderWorkerBenchmark();
+    return;
+  }
   elements.benchmarkInsight.textContent = "Ready to measure";
   elements.benchmarkStatus.textContent =
     workerCount === 1
@@ -340,7 +343,9 @@ async function runWorkerBenchmark() {
     announce(
       workerCount === 1
         ? `One worker finished in ${formatDuration(state.workerBenchmark.oneWorker.elapsedMs)}.`
-        : `${workerCount} workers finished ${state.workerBenchmark.percentReduction.toFixed(0)} percent sooner.`
+        : state.workerBenchmark.speedup > 1
+          ? `${workerCount} workers finished ${state.workerBenchmark.percentReduction.toFixed(0)} percent sooner.`
+          : `${workerCount} workers did not beat the one-worker baseline on this run.`
     );
   } catch (error) {
     elements.benchmarkInsight.textContent = "Comparison could not run";

@@ -45,6 +45,8 @@ test("build progress is event-driven and the game is interactive", () => {
   assert.match(app, /\/api\/benchmark\/workers/);
   assert.match(app, /efficiency/);
   assert.match(app, /workerCount/);
+  assert.match(app, /renderWorkerBenchmark\(\);\s+return;/);
+  assert.match(app, /did not beat the one-worker baseline on this run/);
   assert.match(app, /percentLess/);
   assert.match(app, /cachedRebuild/);
   assert.match(app, /No cache or simulated delay was used/);
