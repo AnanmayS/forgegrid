@@ -8,6 +8,17 @@ work across three networked worker processes, stores results in a
 content-addressed cache, bundles a playable artifact, and loads that exact
 artifact into a browser game.
 
+## Watch the demo
+
+[![ForgeGrid demo: customize a game, distribute its build, reuse the cache, recover a worker, and play the result](docs/assets/forgegrid-demo.gif)](docs/assets/forgegrid-demo.mp4)
+
+**[Watch the 56-second MP4](docs/assets/forgegrid-demo.mp4)** ·
+**[Run it locally](#quick-start)**
+
+The recording uses the real local system: three operating-system worker
+processes, measured wall-clock timings, an actual worker termination, and the
+playable artifact produced by the build.
+
 The project is designed to make infrastructure understandable before someone
 reads the code:
 
