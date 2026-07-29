@@ -140,23 +140,38 @@ export async function measureWorkerCount({
 }
 
 export async function runWorkerComparison(options = {}) {
+  const workerCount = options.workerCount ?? 3;
+  if (
+    !Number.isInteger(workerCount) ||
+    workerCount < 1 ||
+    workerCount > 8
+  ) {
+    throw new Error("workerCount must be an integer from 1 through 8");
+  }
   const oneWorker = await measureWorkerCount({
     ...options,
     workerCount: 1
   });
-  const threeWorkers = await measureWorkerCount({
-    ...options,
-    workerCount: 3
-  });
+  const selectedWorkers =
+    workerCount === 1
+      ? oneWorker
+      : await measureWorkerCount({
+          ...options,
+          workerCount
+        });
   const reduction =
-    ((oneWorker.elapsedMs - threeWorkers.elapsedMs) / oneWorker.elapsedMs) * 100;
+    ((oneWorker.elapsedMs - selectedWorkers.elapsedMs) / oneWorker.elapsedMs) *
+    100;
+  const speedup = oneWorker.elapsedMs / selectedWorkers.elapsedMs;
   return {
     measuredAt: new Date().toISOString(),
     workScale: Number(options.workScale ?? 6),
+    workerCount,
     oneWorker,
-    threeWorkers,
+    selectedWorkers,
     percentReduction: Math.max(0, reduction),
-    speedup: oneWorker.elapsedMs / threeWorkers.elapsedMs
+    speedup,
+    efficiency: (speedup / workerCount) * 100
   };
 }
 
@@ -165,7 +180,8 @@ if (
   import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 ) {
   runWorkerComparison({
-    workScale: Number(process.env.FORGEGRID_BENCHMARK_SCALE || 6)
+    workScale: Number(process.env.FORGEGRID_BENCHMARK_SCALE || 6),
+    workerCount: Number(process.env.FORGEGRID_BENCHMARK_WORKERS || 3)
   })
     .then((result) => {
       console.log(JSON.stringify(result, null, 2));

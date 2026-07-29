@@ -7,16 +7,22 @@ import { createForgeGridServer } from "../server/server.js";
 
 test("HTTP server exposes health, presets, game, and static interface", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "forgegrid-http-"));
+  let benchmarkOptions = null;
   const app = await createForgeGridServer({
     port: 0,
     autoWorkers: false,
     cacheRoot: directory,
-    benchmarkRunner: async () => ({
-      oneWorker: { elapsedMs: 1_000 },
-      threeWorkers: { elapsedMs: 440 },
-      percentReduction: 56,
-      speedup: 2.27
-    })
+    benchmarkRunner: async (options) => {
+      benchmarkOptions = options;
+      return {
+        workerCount: options.workerCount,
+        oneWorker: { elapsedMs: 1_000 },
+        selectedWorkers: { elapsedMs: 440 },
+        percentReduction: 56,
+        speedup: 2.27,
+        efficiency: 56.75
+      };
+    }
   });
   try {
     const [health, presets, game, homepage, benchmark] = await Promise.all([
@@ -25,7 +31,9 @@ test("HTTP server exposes health, presets, game, and static interface", async ()
       fetch(`${app.address}/api/default-game`).then((response) => response.json()),
       fetch(app.address).then((response) => response.text()),
       fetch(`${app.address}/api/benchmark/workers`, {
-        method: "POST"
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workerCount: 8 })
       }).then((response) => response.json())
     ]);
     assert.equal(health.ok, true);
@@ -34,6 +42,18 @@ test("HTTP server exposes health, presets, game, and static interface", async ()
     assert.equal(game.theme.id, "foundry");
     assert.match(homepage, /Build a game across a fleet of computers/);
     assert.equal(benchmark.percentReduction, 56);
+    assert.equal(benchmark.workerCount, 8);
+    assert.equal(benchmarkOptions.workerCount, 8);
+
+    const invalid = await fetch(`${app.address}/api/benchmark/workers`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workerCount: 9 })
+    });
+    assert.equal(invalid.status, 400);
+    assert.deepEqual(await invalid.json(), {
+      error: "workerCount must be an integer from 1 through 8"
+    });
   } finally {
     await app.close();
     await rm(directory, { recursive: true, force: true });

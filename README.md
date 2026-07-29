@@ -45,6 +45,7 @@ Once it is running:
 3. Play the artifact they produced.
 4. Build it again to see all seven tasks return from cache.
 5. Enable **Demonstrate recovery** to stop Worker 2 and reassign its task.
+6. Use the **Worker scaling lab** to compare any fleet size from 1 to 8.
 
 ## How it works
 
@@ -110,8 +111,8 @@ npm run benchmark
 npm run benchmark:workers
 ```
 
-The benchmarks cover cold, warm, and partially invalidated builds, plus the
-one-worker versus three-worker comparison.
+The benchmarks cover cold, warm, and partially invalidated builds, plus real
+one-worker versus 1-to-8-worker comparisons.
 
 The test suite covers hashing, dependency scheduling, cache correctness,
 network builds, partial invalidation, worker-loss requeue behavior, and process
