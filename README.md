@@ -10,7 +10,8 @@ artifact into a browser game.
 
 ## Watch the demo
 
-**[▶ Play the 56-second demo video](docs/assets/forgegrid-demo.mp4?raw=1)** ·
+https://github.com/user-attachments/assets/c8b4dd5b-3791-40d0-b8d3-fa762ce87cbc
+
 **[Run it locally](#quick-start)**
 
 The recording uses the real local system: three operating-system worker
