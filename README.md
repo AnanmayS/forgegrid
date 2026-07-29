@@ -13,15 +13,14 @@ artifact into a browser game.
 *A real run on this computer: three worker processes completed the build 59%
 faster than one worker, with the exact build events recorded beside it.*
 
-## Watch the demo
+## Why distribution helps
 
-https://github.com/user-attachments/assets/c8b4dd5b-3791-40d0-b8d3-fa762ce87cbc
+![Parallelism waterfall showing the same seven-task cold build finishing in 2.5 seconds on one worker and 1.0 second across three workers](docs/assets/parallelism-waterfall.svg)
+
+*Three worker processes execute independent build tasks at the same time,
+reducing measured wall-clock time by 59%. No cache or simulated delay was used.*
 
 **[Run it locally](#quick-start)**
-
-The recording uses the real local system: three operating-system worker
-processes, measured wall-clock timings, an actual worker termination, and the
-playable artifact produced by the build.
 
 The project is designed to make infrastructure understandable before someone
 reads the code:
