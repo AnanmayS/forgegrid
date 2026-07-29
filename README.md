@@ -10,9 +10,7 @@ artifact into a browser game.
 
 ## Watch the demo
 
-[![ForgeGrid demo: customize a game, distribute its build, reuse the cache, recover a worker, and play the result](docs/assets/forgegrid-demo.gif)](docs/assets/forgegrid-demo.mp4?raw=1)
-
-**[Watch the 56-second MP4](docs/assets/forgegrid-demo.mp4?raw=1)** ·
+**[▶ Play the 56-second demo video](docs/assets/forgegrid-demo.mp4?raw=1)** ·
 **[Run it locally](#quick-start)**
 
 The recording uses the real local system: three operating-system worker
