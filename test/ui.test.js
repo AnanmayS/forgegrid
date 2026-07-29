@@ -18,9 +18,10 @@ test("primary recruiter flow is visible in the static interface", () => {
   assert.match(html, /Demonstrate recovery/);
   assert.match(html, /Build the same choices again/);
   assert.match(html, /Current build measurements/);
-  assert.match(html, /Measured scale-out test/);
-  assert.match(html, /1 worker vs 3 workers/);
-  assert.match(html, /same seven-task cold build twice/);
+  assert.match(html, /Worker scaling lab/);
+  assert.match(html, /Choose 1 to 8 workers/);
+  assert.match(html, /same seven-task cold\s+build/);
+  assert.match(html, /id="benchmark-worker-count"/);
   assert.match(html, /seven build tasks, three workers/);
   assert.match(html, /Why caching helps/);
 });
@@ -42,6 +43,10 @@ test("build progress is event-driven and the game is interactive", () => {
   assert.match(app, /renderBuildComparison/);
   assert.match(app, /runWorkerBenchmark/);
   assert.match(app, /\/api\/benchmark\/workers/);
+  assert.match(app, /efficiency/);
+  assert.match(app, /workerCount/);
+  assert.match(app, /renderWorkerBenchmark\(\);\s+return;/);
+  assert.match(app, /did not beat the one-worker baseline on this run/);
   assert.match(app, /percentLess/);
   assert.match(app, /cachedRebuild/);
   assert.match(app, /No cache or simulated delay was used/);

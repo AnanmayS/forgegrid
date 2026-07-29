@@ -203,7 +203,7 @@
           >
             <div class="comparison-heading">
               <div>
-                <p class="panel-kicker">Measured scale-out test</p>
+                <p class="panel-kicker">Worker scaling lab</p>
                 <h3 id="benchmark-title">1 worker vs 3 workers</h3>
               </div>
               <strong id="benchmark-insight">Run it on this computer</strong>
@@ -216,16 +216,31 @@
               hidden
             ></div>
             <p class="comparison-method" id="benchmark-status">
-              Runs the same seven-task cold build twice with caching off. Every
-              duration is measured, with no simulated delay.
+              Choose 1 to 8 workers. ForgeGrid runs the same seven-task cold
+              build with caching off and measures every duration.
             </p>
-            <button
-              class="button button-secondary benchmark-button"
-              id="run-worker-benchmark"
-              type="button"
-            >
-              Run speed test
-            </button>
+            <div class="benchmark-controls">
+              <label for="benchmark-worker-count">
+                Workers
+                <select id="benchmark-worker-count">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3" selected>3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                </select>
+              </label>
+              <button
+                class="button button-secondary benchmark-button"
+                id="run-worker-benchmark"
+                type="button"
+              >
+                Run experiment
+              </button>
+            </div>
           </section>
 
           <section

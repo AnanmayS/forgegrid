@@ -44,7 +44,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   color: inherit;
   font: inherit;
 }
@@ -961,9 +962,42 @@ legend {
   line-height: 1.4;
 }
 
+.benchmark-controls {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.benchmark-controls label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  min-height: 44px;
+  gap: 7px;
+  padding-left: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 720;
+}
+
+.benchmark-controls select {
+  align-self: stretch;
+  min-width: 42px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0 5px 5px 0;
+  background: var(--surface-recessed);
+  color: var(--ink);
+  font-weight: 760;
+  text-align: center;
+}
+
 .benchmark-button {
   width: 100%;
-  margin-top: 10px;
 }
 
 .cache-lesson {

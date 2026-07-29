@@ -22,6 +22,8 @@ const elements = {
   benchmarkButton: document.querySelector("#run-worker-benchmark"),
   benchmarkInsight: document.querySelector("#benchmark-insight"),
   benchmarkStatus: document.querySelector("#benchmark-status"),
+  benchmarkTitle: document.querySelector("#benchmark-title"),
+  benchmarkWorkerCount: document.querySelector("#benchmark-worker-count"),
   cacheCount: document.querySelector("#cache-count"),
   clearCache: document.querySelector("#clear-cache"),
   comparisonBars: document.querySelector("#comparison-bars"),
@@ -175,6 +177,24 @@ function percentLess(faster, slower) {
   return Math.max(0, ((slower - faster) / slower) * 100);
 }
 
+function updateBenchmarkSelection() {
+  const workerCount = Number(elements.benchmarkWorkerCount.value);
+  elements.benchmarkTitle.textContent =
+    workerCount === 1
+      ? "1 worker baseline"
+      : `1 worker vs ${workerCount} workers`;
+  if (state.workerBenchmark?.workerCount === workerCount) {
+    renderWorkerBenchmark();
+    return;
+  }
+  elements.benchmarkInsight.textContent = "Ready to measure";
+  elements.benchmarkStatus.textContent =
+    workerCount === 1
+      ? "Runs one seven-task cold build with caching off to establish the baseline."
+      : `Runs the same seven-task cold build with 1 worker and ${workerCount} workers. Caching stays off.`;
+  elements.benchmarkBars.hidden = true;
+}
+
 function renderBuildComparison() {
   const current = state.completedBuilds[state.completedBuilds.length - 1];
   if (!current || state.currentBuild?.status === "running") {
@@ -241,20 +261,26 @@ function renderBuildComparison() {
 function renderWorkerBenchmark() {
   const result = state.workerBenchmark;
   if (!result) return;
+  const workerCount = result.workerCount;
   const rows = [
     {
       label: "1 worker",
       durationMs: result.oneWorker.elapsedMs,
-      note: "Actual cold build with every task run in series",
+      note:
+        workerCount === 1
+          ? "Measured cold-build baseline"
+          : "Cold build with every task run in series",
       className: ""
-    },
-    {
-      label: "3 workers",
-      durationMs: result.threeWorkers.elapsedMs,
-      note: "Actual cold build with tasks distributed in parallel",
-      className: "is-distributed"
     }
   ];
+  if (workerCount > 1) {
+    rows.push({
+      label: `${workerCount} workers`,
+      durationMs: result.selectedWorkers.elapsedMs,
+      note: "Same cold build with independent tasks run in parallel",
+      className: "is-distributed"
+    });
+  }
   const maximum = Math.max(...rows.map((row) => row.durationMs));
   elements.benchmarkBars.replaceChildren(
     ...rows.map((row) => comparisonRow(row, maximum))
@@ -266,32 +292,60 @@ function renderWorkerBenchmark() {
       .map((row) => `${row.label}: ${formatDuration(row.durationMs)}.`)
       .join(" ")
   );
+  elements.benchmarkTitle.textContent =
+    workerCount === 1
+      ? "1 worker baseline"
+      : `1 worker vs ${workerCount} workers`;
+  if (workerCount === 1) {
+    elements.benchmarkInsight.textContent = "Baseline measured";
+    elements.benchmarkStatus.textContent =
+      "This is the one-worker reference. Choose a higher count to measure parallel speedup.";
+    return;
+  }
   const improved = result.percentReduction > 0;
   elements.benchmarkInsight.textContent = improved
-    ? `${result.percentReduction.toFixed(0)}% less time`
+    ? `${result.speedup.toFixed(2)}× speedup`
     : "No local speedup on this run";
+  const efficiency = `${result.efficiency.toFixed(0)}% worker efficiency.`;
+  const limit =
+    workerCount > 6
+      ? " This graph has six parallel tasks, so extra workers wait for the final bundle."
+      : "";
   elements.benchmarkStatus.textContent = improved
-    ? `${result.speedup.toFixed(2)}× faster on this computer. No cache or simulated delay was used.`
-    : "The workers shared this computer's resources. No cache or simulated delay was used.";
+    ? `${result.percentReduction.toFixed(0)}% less time. ${efficiency} No cache or simulated delay was used.${limit}`
+    : `${efficiency} The workers shared this computer's resources. No cache or simulated delay was used.${limit}`;
 }
 
 async function runWorkerBenchmark() {
+  const workerCount = Number(elements.benchmarkWorkerCount.value);
   elements.benchmarkButton.disabled = true;
   elements.buildButton.disabled = true;
+  elements.benchmarkWorkerCount.disabled = true;
   elements.benchmarkButton.textContent = "Measuring...";
-  elements.benchmarkInsight.textContent = "Running both cold builds";
+  elements.benchmarkInsight.textContent =
+    workerCount === 1 ? "Running cold baseline" : "Running both cold builds";
   elements.benchmarkStatus.textContent =
-    "First one worker, then three workers. This takes a few seconds.";
+    workerCount === 1
+      ? "Measuring the one-worker baseline. This takes a few seconds."
+      : `First one worker, then ${workerCount} workers. This takes a few seconds.`;
   elements.benchmarkBars.hidden = true;
-  announce("Running a real one-worker versus three-worker comparison.");
+  announce(
+    workerCount === 1
+      ? "Running a real one-worker cold build."
+      : `Running a real one-worker versus ${workerCount}-worker comparison.`
+  );
   try {
     state.workerBenchmark = await request("/api/benchmark/workers", {
       method: "POST",
-      body: "{}"
+      body: JSON.stringify({ workerCount })
     });
     renderWorkerBenchmark();
     announce(
-      `Three workers finished ${state.workerBenchmark.percentReduction.toFixed(0)} percent sooner.`
+      workerCount === 1
+        ? `One worker finished in ${formatDuration(state.workerBenchmark.oneWorker.elapsedMs)}.`
+        : state.workerBenchmark.speedup > 1
+          ? `${workerCount} workers finished ${state.workerBenchmark.percentReduction.toFixed(0)} percent sooner.`
+          : `${workerCount} workers did not beat the one-worker baseline on this run.`
     );
   } catch (error) {
     elements.benchmarkInsight.textContent = "Comparison could not run";
@@ -299,10 +353,11 @@ async function runWorkerBenchmark() {
     announce(`Benchmark error: ${error.message}`);
   } finally {
     elements.benchmarkButton.disabled = false;
+    elements.benchmarkWorkerCount.disabled = false;
     elements.buildButton.disabled =
       state.currentBuild?.status === "running";
     elements.benchmarkButton.textContent =
-      state.workerBenchmark ? "Run again" : "Run speed test";
+      state.workerBenchmark ? "Run again" : "Run experiment";
   }
 }
 
@@ -721,6 +776,10 @@ async function initialize() {
 
 elements.buildButton.addEventListener("click", buildGame);
 elements.benchmarkButton.addEventListener("click", runWorkerBenchmark);
+elements.benchmarkWorkerCount.addEventListener(
+  "change",
+  updateBenchmarkSelection
+);
 elements.clearCache.addEventListener("click", clearCache);
 elements.resetPresets.addEventListener("click", resetChoices);
 elements.playGame.addEventListener("click", () => {

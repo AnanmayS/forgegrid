@@ -1,223 +1,108 @@
 # ForgeGrid
 
-ForgeGrid is a playable distributed build-system demo.
+**A playable distributed build system.**
 
-A visitor chooses a game world, weapon, and enemy profile. ForgeGrid converts
-those inputs into a dependency graph, distributes real CPU and asset-processing
-work across three networked worker processes, stores results in a
-content-addressed cache, bundles a playable artifact, and loads that exact
-artifact into a browser game.
+ForgeGrid turns a few game choices into a seven-task build. Three worker
+processes compile and package the game, cached work is reused, failed workers
+are replaced, and the exact artifact they produce can be played in the browser.
 
-The project is designed to make infrastructure understandable before someone
-reads the code:
+![ForgeGrid showing its playable game, worker fleet, measured speedup, and build evidence](docs/assets/forgegrid-hero.png)
 
-1. Customize a game.
-2. Watch workers build it.
-3. Play the result.
-4. Repeat the same build and see every task return from cache.
-5. Stop a worker during a build and watch its unfinished task move elsewhere.
+## Results at a glance
 
-## Quick start
+| Test | Measured result |
+| --- | ---: |
+| Cold build: one worker vs. three workers | **2.5 s → 1.0 s** |
+| Wall-clock reduction | **59% less time** |
+| Parallel speedup | **2.44× faster** |
+| Identical second build | **7 of 7 tasks reused from cache** |
+| Worker failure | **Task reassigned; build completes** |
+
+The worker comparison runs the same cold build twice with caching disabled and
+no simulated delay. Results vary with hardware and background load.
+
+![Parallelism waterfall showing the same seven-task cold build finishing in 2.5 seconds on one worker and 1.0 second across three workers](docs/assets/parallelism-waterfall.svg)
+
+## Try it locally
 
 Requirements: Node.js 22 or newer. There are no third-party runtime
 dependencies.
 
-On macOS, double-click `start-forgegrid.command`. It starts the system, waits
-for the coordinator, and opens the playable demo automatically.
+On macOS, double-click `start-forgegrid.command`.
 
-Or start it from a terminal:
+Or run:
 
 ```bash
 npm start
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-The coordinator starts three worker processes automatically. To run the same
-architecture as separate containers:
+Once it is running:
 
-```bash
-docker compose up --build
+1. Choose a world, weapon, and enemy style.
+2. Build the game and watch three workers claim tasks.
+3. Play the artifact they produced.
+4. Build it again to see all seven tasks return from cache.
+5. Enable **Demonstrate recovery** to stop Worker 2 and reassign its task.
+6. Use the **Worker scaling lab** to compare any fleet size from 1 to 8.
+
+## How it works
+
+1. The coordinator converts the game choices into a dependency graph.
+2. Three separate worker processes claim independent tasks over HTTP.
+3. Completed artifacts are stored in a SHA-256 content-addressed cache.
+4. The final bundle starts after its dependencies finish or return from cache.
+5. The browser loads and plays that verified bundle.
+
+```mermaid
+flowchart LR
+    UI["Browser game and build UI"] --> Coordinator
+    Coordinator --> Graph["Seven-task dependency graph"]
+    Graph --> W1["Worker 1"]
+    Graph --> W2["Worker 2"]
+    Graph --> W3["Worker 3"]
+    W1 --> Cache["Content-addressed cache"]
+    W2 --> Cache
+    W3 --> Cache
+    Cache --> Bundle["Playable game bundle"]
+    Bundle --> UI
 ```
 
-The local demo uses a showcase-sized real workload so worker progress remains
-visible for a few seconds. Set `FORGEGRID_WORK_SCALE=1` when starting standalone
-workers if you want the fastest execution instead.
+## Engineering details
 
-## What is real
-
-The build visualization is driven by coordinator events, not browser timers.
+<details>
+<summary><strong>What is real?</strong></summary>
 
 - Workers are separate operating-system processes.
 - Workers register, heartbeat, claim tasks, report progress, and return
   artifacts over HTTP.
-- The coordinator computes SHA-256 action keys from canonical task inputs and
-  dependency keys.
-- Cache artifacts are written atomically and addressed by those keys.
-- Script compilation generates and compresses combat lookup tables.
-- Shader compilation expands and links procedural shader variants.
-- Texture processing creates and compresses a procedural RGBA atlas.
-- Audio processing synthesizes and encodes a deterministic sound bank.
-- Level packaging generates deterministic arena geometry.
-- Navigation generation builds and compresses a pathfinding field.
-- Game bundling combines verified dependency artifacts into a playable
-  manifest.
-- The recovery demo tells Worker 2 to terminate its real process. The
-  coordinator requeues its unfinished task, and the local launcher or container
-  runtime starts a replacement.
-- The worker comparison runs the same cold build twice with caching disabled:
-  once with one process and once with three. Both bars use actual wall-clock
-  time and no simulated delay.
-- The cache comparison separately measures a cold build and an identical
-  rebuild so parallelism and work avoidance are not mixed together.
+- The UI is driven by coordinator events rather than browser timers.
+- Script, shader, texture, audio, level, and navigation tasks perform real,
+  deterministic CPU and asset-processing work.
+- Cache keys include each task's inputs, implementation version, and dependency
+  outputs.
+- The final playable manifest contains checksums for the inputs that created it.
 
-The public interface accepts curated presets rather than arbitrary uploaded
-code. That keeps the demonstration safe to host while preserving real build
-behavior.
+</details>
 
-## Architecture
+<details>
+<summary><strong>What happens when a worker fails?</strong></summary>
 
-```mermaid
-flowchart LR
-    Browser["Browser game and build UI"] -->|POST build| Coordinator
-    Browser <-->|SSE build events| Coordinator
-
-    Coordinator --> Graph["Dependency graph"]
-    Coordinator --> CAS["Content-addressed cache"]
-
-    W1["Worker 1"] <-->|HTTP claim/result| Coordinator
-    W2["Worker 2"] <-->|HTTP claim/result| Coordinator
-    W3["Worker 3"] <-->|HTTP claim/result| Coordinator
-
-    Graph --> W1
-    Graph --> W2
-    Graph --> W3
-    W1 --> CAS
-    W2 --> CAS
-    W3 --> CAS
-    CAS --> Artifact["Playable game manifest"]
-    Artifact --> Browser
-```
-
-The task graph contains seven actions:
-
-```text
-compile-scripts ───────┐
-compile-shaders ───────┤
-process-textures ──────┤
-process-audio ─────────┼─> bundle-game
-package-level ─────────┤
-generate-navigation ───┘
-```
-
-The first six tasks are independent and may run concurrently. The final
-bundle cannot start until all dependency artifacts are completed or restored
-from cache.
-
-## Worker scaling benchmark
-
-The interface includes a speed test that performs two real cold builds with
-caching disabled. On an Apple M2 test machine:
-
-```json
-{
-  "oneWorkerMs": 3416,
-  "threeWorkersMs": 1644,
-  "percentReduction": 51.9,
-  "speedup": 2.08
-}
-```
-
-Run the same controlled comparison from a terminal:
-
-```bash
-npm run benchmark:workers
-```
-
-Results vary with processor load and hardware. The benchmark reports the
-measured result rather than enforcing a marketing target.
-
-## Cache behavior
-
-Every action key contains:
-
-- Task implementation version
-- Task name
-- Canonically serialized direct inputs
-- Content keys of dependency outputs
-
-Changing only the weapon invalidates scripts, shaders, audio, and the final
-bundle. Texture, level, and navigation artifacts remain reusable.
-
-An example local benchmark:
-
-```json
-{
-  "cold": {"executedTasks": 7, "cacheHits": 0},
-  "warm": {"executedTasks": 0, "cacheHits": 7},
-  "incremental": {"executedTasks": 4, "cacheHits": 3}
-}
-```
-
-Run the benchmark on your own machine:
-
-```bash
-npm run benchmark
-```
-
-Timing depends on hardware. The task counts and invalidation behavior are the
-important correctness signals.
-
-## Failure recovery
-
-Enable **Demonstrate recovery** before building.
-
-When Worker 2 starts a task, the coordinator marks that one assignment for the
-failure demonstration. Worker 2 then terminates its own process. The
-coordinator:
+The recovery demo terminates Worker 2 while it owns a task. The coordinator:
 
 1. Marks the worker offline.
-2. Returns its unfinished task to the front of the queue.
-3. Assigns that same task to another available worker.
+2. Returns its unfinished task to the queue.
+3. Assigns the task to another available worker.
 4. Starts a replacement Worker 2.
 5. Completes the build without losing finished work.
 
-Tasks stop retrying after three failures, preventing an invalid task from
-cycling forever.
+Remote workers are also detected through heartbeat leases.
 
-Remote workers use heartbeat leases, so a worker that disappears without a
-clean process-exit notification is also detected.
+</details>
 
-## Running a worker on another machine
-
-Start the coordinator without local workers:
-
-```bash
-FORGEGRID_AUTO_WORKERS=false npm start
-```
-
-On a machine that can reach the coordinator:
-
-```bash
-FORGEGRID_WORKER_ID=worker-remote-1 \
-FORGEGRID_COORDINATOR_URL=http://COORDINATOR_HOST:8000 \
-node server/worker.js
-```
-
-The default demo runs everything on one computer for convenience. The protocol
-does not depend on local inter-process communication or a shared worker
-filesystem.
-
-## Game controls
-
-- Move: `WASD` or arrow keys
-- Fire: hold the pointer or press `Space`
-- Mobile: directional and fire buttons below the game
-
-The game is intentionally small. Its job is to make each build artifact
-immediately testable, not to compete with a production game.
-
-## Testing
+<details>
+<summary><strong>Benchmarks and tests</strong></summary>
 
 ```bash
 npm run check
@@ -226,54 +111,66 @@ npm run benchmark
 npm run benchmark:workers
 ```
 
-The test suite covers:
+The benchmarks cover cold, warm, and partially invalidated builds, plus real
+one-worker versus 1-to-8-worker comparisons.
 
-- Canonical hashing and input-order independence
-- Safe content-addressed storage
-- Dependency scheduling
-- Cold and warm builds
-- Partial cache invalidation
-- True one-worker versus three-worker process comparison
-- Worker-loss requeue behavior
-- HTTP health, presets, and static delivery
-- Full coordinator-to-worker network builds
-- Process termination and recovery
+The test suite covers hashing, dependency scheduling, cache correctness,
+network builds, partial invalidation, worker-loss requeue behavior, and process
+replacement.
 
-CI runs syntax checks, unit tests, network integration tests, and the
-cold/warm/incremental benchmark.
+</details>
 
-## Repository layout
+<details>
+<summary><strong>Run with containers or remote workers</strong></summary>
 
-```text
-public/                  Playable game and recruiter-facing interface
-server/server.js         HTTP coordinator, SSE, worker lifecycle
-server/coordinator.js    Build graph, queue, cache, retries, worker leases
-server/worker.js         Standalone network worker process
-server/task-definitions.js
-                         Real build workloads and playable manifest
-test/                    Unit and end-to-end network tests
-scripts/benchmark.js     Cold, warm, and incremental benchmark
-scripts/worker-comparison.js
-                         One-worker and three-worker cold-build comparison
-compose.yaml             Separate coordinator and worker containers
+Run the coordinator and workers as separate containers:
+
+```bash
+docker compose up --build
 ```
 
-## Resume-level description
+Start only the coordinator:
 
-> Built a distributed game-build platform with networked workers,
-> content-addressed caching, dependency-aware scheduling, and automatic task
-> recovery after worker failure; exposed the system through a playable browser
-> game and live build evidence.
+```bash
+FORGEGRID_AUTO_WORKERS=false npm start
+```
 
-## Limitations
+Connect a worker from another machine:
 
-- This is an educational build system, not a replacement for Unreal Build Tool
-  or a production remote-execution platform.
+```bash
+FORGEGRID_WORKER_ID=worker-remote-1 \
+FORGEGRID_COORDINATOR_URL=http://COORDINATOR_HOST:8000 \
+node server/worker.js
+```
+
+</details>
+
+<details>
+<summary><strong>Repository guide</strong></summary>
+
+```text
+public/                  Playable game and build interface
+server/server.js         HTTP coordinator and worker lifecycle
+server/coordinator.js    Build graph, queue, cache, retries, leases
+server/worker.js         Standalone network worker
+server/task-definitions.js
+                         Build workloads and playable manifest
+test/                    Unit and network integration tests
+scripts/                 Benchmark programs
+compose.yaml             Coordinator and worker containers
+```
+
+See [DESIGN.md](DESIGN.md) for the deeper system design.
+
+</details>
+
+<details>
+<summary><strong>Current limitations</strong></summary>
+
+- ForgeGrid is an educational build system, not a replacement for a production
+  game-build platform.
 - Workers currently trust the coordinator and are not authenticated.
-- Build tasks use curated presets and do not execute user-submitted code.
-- The coordinator stores state in memory, while cached artifacts persist on
-  disk.
+- Build tasks use curated presets rather than user-submitted code.
+- Coordinator state is in memory; cached artifacts persist on disk.
 
-Those boundaries are deliberate. They keep the demo understandable and safe
-while leaving clear directions for authentication, durable scheduling state,
-worker sandboxing, and multi-coordinator replication.
+</details>

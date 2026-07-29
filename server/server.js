@@ -214,6 +214,15 @@ export async function createForgeGridServer(options = {}) {
       }
 
       if (request.method === "POST" && pathname === "/api/benchmark/workers") {
+        const input = await bodyJson(request);
+        const workerCount = input.workerCount ?? 3;
+        if (
+          !Number.isInteger(workerCount) ||
+          workerCount < 1 ||
+          workerCount > 8
+        ) {
+          throw new Error("workerCount must be an integer from 1 through 8");
+        }
         const active = [...coordinator.builds.values()].some(
           (build) => build.status === "running"
         );
@@ -232,7 +241,8 @@ export async function createForgeGridServer(options = {}) {
         benchmarkRunning = true;
         try {
           const result = await benchmarkRunner({
-            workScale: benchmarkScale
+            workScale: benchmarkScale,
+            workerCount
           });
           json(response, 200, result);
         } finally {
