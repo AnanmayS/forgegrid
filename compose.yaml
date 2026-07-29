@@ -1,0 +1,47 @@
+services:
+  coordinator:
+    build: .
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8000
+      FORGEGRID_AUTO_WORKERS: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      - forgegrid-cache:/app/.forgegrid
+
+  worker-1:
+    build: .
+    command: ["node", "server/worker.js"]
+    restart: on-failure
+    environment:
+      FORGEGRID_WORKER_ID: worker-1
+      FORGEGRID_COORDINATOR_URL: http://coordinator:8000
+      FORGEGRID_WORK_SCALE: 6
+    depends_on:
+      - coordinator
+
+  worker-2:
+    build: .
+    command: ["node", "server/worker.js"]
+    restart: on-failure
+    environment:
+      FORGEGRID_WORKER_ID: worker-2
+      FORGEGRID_COORDINATOR_URL: http://coordinator:8000
+      FORGEGRID_WORK_SCALE: 6
+    depends_on:
+      - coordinator
+
+  worker-3:
+    build: .
+    command: ["node", "server/worker.js"]
+    restart: on-failure
+    environment:
+      FORGEGRID_WORKER_ID: worker-3
+      FORGEGRID_COORDINATOR_URL: http://coordinator:8000
+      FORGEGRID_WORK_SCALE: 6
+    depends_on:
+      - coordinator
+
+volumes:
+  forgegrid-cache:

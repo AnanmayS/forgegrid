@@ -1,0 +1,20 @@
+{
+  "name": "forgegrid",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A playable distributed game-build system",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "test": "node --test",
+    "test:unit": "node --test test/benchmark.test.js test/canonical.test.js test/cas.test.js test/coordinator.test.js test/tasks.test.js test/ui.test.js",
+    "test:network": "node --test test/server.test.js",
+    "benchmark": "node scripts/benchmark.js",
+    "benchmark:workers": "node scripts/worker-comparison.js",
+    "check": "node --check server/server.js && node --check public/app.js && node --check public/game.js && node --check scripts/benchmark-worker.js && node --check scripts/worker-comparison.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

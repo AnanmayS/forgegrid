@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Customize a game, build it across real workers, and play the result."
+    >
+    <title>ForgeGrid | Build a game across a worker fleet</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%23234d9b'/%3E%3Cpath d='M8 8h6v6H8zm10 0h6v6h-6zM8 18h6v6H8zm10 0h6v6h-6z' fill='%23f5efe3'/%3E%3C/svg%3E"
+    >
+    <link rel="stylesheet" href="/styles.css?v=2">
+    <script type="module" src="/app.js?v=2"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#studio">Skip to game studio</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="ForgeGrid home">
+        <span class="brand-mark" aria-hidden="true">
+          <i></i><i></i><i></i><i></i>
+        </span>
+        <span>ForgeGrid</span>
+      </a>
+      <div class="fleet-health" id="fleet-health" role="status">
+        <span class="health-light" aria-hidden="true"></span>
+        Connecting to worker fleet
+      </div>
+      <a class="header-link" href="#how-it-works">How it works</a>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">Playable distributed systems demo</p>
+        <h1 id="page-title">Build a game across a fleet of computers.</h1>
+        <p>
+          Choose a world, weapon, and enemy style. Three workers compile and
+          package the result. Then play the exact build they produced.
+        </p>
+      </section>
+
+      <nav class="workflow" aria-label="ForgeGrid workflow">
+        <button class="workflow-step is-current" type="button" data-jump="customize">
+          <span>1</span>
+          <strong>Customize</strong>
+          <small>Choose a game version</small>
+        </button>
+        <button class="workflow-step" type="button" data-jump="build">
+          <span>2</span>
+          <strong>Build Game</strong>
+          <small>Distribute real work</small>
+        </button>
+        <button class="workflow-step" type="button" data-jump="play">
+          <span>3</span>
+          <strong>Play</strong>
+          <small>Test the artifact</small>
+        </button>
+      </nav>
+
+      <section class="studio" id="studio" aria-label="ForgeGrid game studio">
+        <div class="game-side">
+          <div class="game-heading">
+            <div>
+              <p class="panel-kicker">Playable artifact</p>
+              <h2 id="game-title">Foundry Run</h2>
+            </div>
+            <div class="game-hud" aria-label="Game status">
+              <span>Health <strong id="game-health">100</strong></span>
+              <span>Targets <strong id="game-enemies">8</strong></span>
+              <span>Score <strong id="game-score">0</strong></span>
+            </div>
+          </div>
+
+          <div class="game-frame" id="play">
+            <canvas
+              id="game-canvas"
+              width="960"
+              height="600"
+              aria-label="Top-down arena game. Use WASD or arrow keys to move and hold the pointer to fire."
+            >
+              Your browser does not support Canvas.
+            </canvas>
+            <div class="game-instructions">
+              <span><kbd>WASD</kbd> or arrows to move</span>
+              <span>Hold pointer or press <kbd>Space</kbd> to fire</span>
+            </div>
+          </div>
+
+          <div class="game-actions">
+            <button class="button button-primary" id="play-game" type="button">
+              Play current build
+            </button>
+            <button class="button button-secondary" id="pause-game" type="button">
+              Pause
+            </button>
+            <span class="artifact-label" id="artifact-label">Starter build</span>
+          </div>
+
+          <div class="touch-controls" aria-label="Touch game controls">
+            <button type="button" data-move="ArrowLeft" aria-label="Move left">←</button>
+            <div>
+              <button type="button" data-move="ArrowUp" aria-label="Move up">↑</button>
+              <button type="button" data-move="ArrowDown" aria-label="Move down">↓</button>
+            </div>
+            <button type="button" data-move="ArrowRight" aria-label="Move right">→</button>
+            <button type="button" id="touch-fire">Fire</button>
+          </div>
+
+          <section class="customizer" id="customize" aria-labelledby="customize-title">
+            <div class="section-title-row">
+              <div>
+                <p class="panel-kicker">Build inputs</p>
+                <h2 id="customize-title">Customize the next version</h2>
+              </div>
+              <button class="text-button" id="reset-presets" type="button">
+                Reset choices
+              </button>
+            </div>
+
+            <fieldset>
+              <legend>World</legend>
+              <div class="choice-grid choice-grid-worlds" id="world-options"></div>
+            </fieldset>
+
+            <div class="split-options">
+              <fieldset>
+                <legend>Weapon</legend>
+                <div class="choice-stack" id="weapon-options"></div>
+              </fieldset>
+              <fieldset>
+                <legend>Enemy style</legend>
+                <div class="choice-stack" id="enemy-options"></div>
+              </fieldset>
+            </div>
+          </section>
+        </div>
+
+        <aside class="build-bench" id="build" aria-labelledby="build-title">
+          <div class="bench-heading">
+            <div>
+              <p class="panel-kicker">Build bench</p>
+              <h2 id="build-title">Three networked workers</h2>
+            </div>
+            <span class="bench-count" id="cache-count">0 cached</span>
+          </div>
+
+          <p class="bench-intro">
+            Each ticket below is a separate process claiming work from the
+            coordinator over HTTP.
+          </p>
+
+          <dl class="build-metrics" aria-label="Current build measurements">
+            <div>
+              <dt>Elapsed</dt>
+              <dd id="metric-elapsed">0 ms</dd>
+            </div>
+            <div>
+              <dt>Tasks run</dt>
+              <dd id="metric-executed">0 / 7</dd>
+            </div>
+            <div>
+              <dt>Reused</dt>
+              <dd id="metric-cached">0</dd>
+            </div>
+            <div>
+              <dt>Retries</dt>
+              <dd id="metric-retries">0</dd>
+            </div>
+          </dl>
+
+          <div class="worker-list" id="worker-list" aria-live="polite">
+            <div class="worker-skeleton"></div>
+            <div class="worker-skeleton"></div>
+            <div class="worker-skeleton"></div>
+          </div>
+
+          <label class="failure-toggle">
+            <input type="checkbox" id="simulate-failure">
+            <span>
+              <strong>Demonstrate recovery</strong>
+              <small>Stop Worker 2 during this build and reassign its task.</small>
+            </span>
+          </label>
+
+          <button class="button button-build" id="build-game" type="button">
+            Build this game
+          </button>
+
+          <div class="build-result" id="build-result" aria-live="polite">
+            <span class="result-icon" aria-hidden="true">○</span>
+            <div>
+              <strong>Ready for your first build</strong>
+              <p>Pick a preset, then send seven tasks to the fleet.</p>
+            </div>
+          </div>
+
+          <section
+            class="build-comparison worker-benchmark"
+            aria-labelledby="benchmark-title"
+          >
+            <div class="comparison-heading">
+              <div>
+                <p class="panel-kicker">Measured scale-out test</p>
+                <h3 id="benchmark-title">1 worker vs 3 workers</h3>
+              </div>
+              <strong id="benchmark-insight">Run it on this computer</strong>
+            </div>
+            <div
+              class="comparison-bars"
+              id="benchmark-bars"
+              role="img"
+              aria-label="Worker benchmark results"
+              hidden
+            ></div>
+            <p class="comparison-method" id="benchmark-status">
+              Runs the same seven-task cold build twice with caching off. Every
+              duration is measured, with no simulated delay.
+            </p>
+            <button
+              class="button button-secondary benchmark-button"
+              id="run-worker-benchmark"
+              type="button"
+            >
+              Run speed test
+            </button>
+          </section>
+
+          <section
+            class="build-comparison"
+            id="build-comparison"
+            aria-labelledby="comparison-title"
+            hidden
+          >
+            <div class="comparison-heading">
+              <div>
+                <p class="panel-kicker">Why caching helps</p>
+                <h3 id="comparison-title">Cold build vs rebuild</h3>
+              </div>
+              <strong id="comparison-insight"></strong>
+            </div>
+            <div
+              class="comparison-bars"
+              id="comparison-bars"
+              role="img"
+              aria-label="Cold and cached build comparison"
+            ></div>
+            <p class="comparison-method">
+              Both bars use actual wall-clock time. Build the same choices
+              again to prove that matching work is restored instead of rerun.
+            </p>
+          </section>
+
+          <div class="cache-lesson">
+            <p class="panel-kicker">Try this after the first build</p>
+            <p>
+              Build the same choices again. Matching input hashes let ForgeGrid
+              reuse every finished task.
+            </p>
+            <button class="text-button" id="clear-cache" type="button">
+              Clear build cache
+            </button>
+          </div>
+        </aside>
+      </section>
+
+      <section class="evidence" aria-labelledby="evidence-title">
+        <div class="section-title-row">
+          <div>
+            <p class="eyebrow">Live evidence</p>
+            <h2 id="evidence-title">What the system actually did</h2>
+          </div>
+          <p>
+            Progress comes from coordinator events. No client-side timer
+            invents build activity.
+          </p>
+        </div>
+
+        <div class="evidence-layout">
+          <div class="timeline-panel">
+            <h3>Build timeline</h3>
+            <ol class="timeline" id="timeline">
+              <li class="timeline-empty">
+                Build events will appear here in chronological order.
+              </li>
+            </ol>
+          </div>
+
+          <div class="task-panel">
+            <div class="task-panel-heading">
+              <h3>Task evidence</h3>
+              <span id="build-id">No build yet</span>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Task</th>
+                    <th scope="col">Result</th>
+                    <th scope="col">Worker</th>
+                    <th scope="col">Time</th>
+                    <th scope="col">Content key</th>
+                  </tr>
+                </thead>
+                <tbody id="task-table">
+                  <tr>
+                    <td colspan="5">Run a build to inspect its artifacts.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="explanation" id="how-it-works" aria-labelledby="explanation-title">
+        <p class="eyebrow">The simple explanation</p>
+        <h2 id="explanation-title">One game, seven build tasks, three workers.</h2>
+        <div class="explanation-flow">
+          <div>
+            <span>01</span>
+            <h3>Fingerprint the inputs</h3>
+            <p>
+              ForgeGrid hashes the selected world, weapon, enemy rules, and
+              dependency outputs.
+            </p>
+          </div>
+          <div>
+            <span>02</span>
+            <h3>Schedule only missing work</h3>
+            <p>
+              Available workers compile scripts and shaders, process textures
+              and audio, then package the level and navigation concurrently.
+            </p>
+          </div>
+          <div>
+            <span>03</span>
+            <h3>Play the verified artifact</h3>
+            <p>
+              The final bundle carries checksums for every input that created
+              the playable game.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>ForgeGrid turns distributed-systems behavior into something playable.</p>
+      <a href="/api/health">Coordinator health</a>
+    </footer>
+
+    <p class="sr-only" id="live-status" role="status" aria-live="polite"></p>
+  </body>
+</html>

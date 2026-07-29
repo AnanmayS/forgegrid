@@ -1,0 +1,22 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: npm run check
+      - name: Run unit and network integration tests
+        run: npm test
+      - name: Run cold, warm, and incremental benchmark
+        run: npm run benchmark
+      - name: Compare one and three workers
+        run: npm run benchmark:workers
